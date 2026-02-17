@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(composeColor))
+                        .background(Color(flowColor))
                         .clickable {
                             viewModel.generateNewColor()
                         }
