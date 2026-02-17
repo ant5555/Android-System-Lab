@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlin.random.Random
 
-class MainVIewModel: ViewModel() {
+class MainViewModel: ViewModel() {
 
     private val _color = MutableStateFlow(0xFFFFFFFF)
     val color = _color.asStateFlow()
