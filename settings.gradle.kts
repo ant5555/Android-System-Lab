@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "project"
 include(":stateflow-sample")
+include(":room-sample")
