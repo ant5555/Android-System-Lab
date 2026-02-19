@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "project"
+rootProject.name = "AndroidSystemLab"
 include(":stateflow-sample")
 include(":room-sample")
