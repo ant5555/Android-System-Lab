@@ -35,6 +35,10 @@ class PagingViewModel: ViewModel() {
         }
     )
 
+    init {
+        loadNextItems()
+    }
+
     fun loadNextItems() {
         viewModelScope.launch {
             paginator.loadNextItems()
