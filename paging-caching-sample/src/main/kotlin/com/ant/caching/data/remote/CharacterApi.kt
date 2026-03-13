@@ -7,7 +7,7 @@ interface CharacterApi {
     @GET("character")
     suspend fun getCharacters(
         @Query("page") page: Int,
-    ): List<CharacterResponse>
+    ): CharacterResponse
 
     companion object {
         const val BASE_URL = "https://rickandmortyapi.com/api/"
