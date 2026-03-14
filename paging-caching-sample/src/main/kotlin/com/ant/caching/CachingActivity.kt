@@ -11,6 +11,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.paging.compose.collectAsLazyPagingItems
+import com.ant.caching.presentation.CharacterScreen
+import com.ant.caching.presentation.CharacterViewModel
 import com.ant.caching.ui.theme.AndroidSystemLabTheme
 
 class CachingActivity : ComponentActivity() {
@@ -20,28 +24,13 @@ class CachingActivity : ComponentActivity() {
         setContent {
             AndroidSystemLabTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
+                    val viewModel = hiltViewModel<CharacterViewModel>()
+                    val characters = viewModel.characterPagingFlow.collectAsLazyPagingItems()
+                    CharacterScreen(
+                        characters = characters,
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    AndroidSystemLabTheme {
-        Greeting("Android")
     }
 }
