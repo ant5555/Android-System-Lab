@@ -79,6 +79,7 @@ dependencies {
     //implementation(libs.retrofit.kotlin.serialization)
     implementation(libs.retrofit.moshi)
     implementation(libs.okhttp.logging)
+    implementation(libs.moshi.kotlin)
 
     // Room
     implementation(libs.room.runtime)
