@@ -72,4 +72,23 @@ class ThreadViewModel : ViewModel() {
         }.apply { name = "MultiThread-Launcher" }.start()
     }
 
+    // Race Condition — 동기화 없이 공유 변수 증가
+    fun runRaceCondition() {
+        Thread {
+            log("=== [3] Race Condition ===")
+            var counter = 0
+            val threads = (1..3).map { i ->
+                val t = Thread {
+                    repeat(1000) { counter++ }
+                    log("Thread-$i 완료, counter=$counter")
+                }
+                t.name = "Race-$i"
+                t
+            }
+            threads.forEach { it.start() }
+            threads.forEach { it.join() }
+            log("최종 counter = $counter  (기댓값: 3000)")
+        }.apply { name = "RaceCondition-Launcher" }.start()
+    }
+
 }

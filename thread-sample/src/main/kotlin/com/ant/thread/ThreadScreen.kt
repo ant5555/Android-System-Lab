@@ -68,6 +68,12 @@ fun ThreadScreen(
             ) {
                 Text("멀티 Thread")
             }
+            Button(
+                onClick = { vm.runRaceCondition() },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Race Condition")
+            }
         }
 
         Spacer(Modifier.height(4.dp))
