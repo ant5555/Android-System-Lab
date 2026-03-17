@@ -68,11 +68,34 @@ fun ThreadScreen(
             ) {
                 Text("멀티 Thread")
             }
+
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Button(
                 onClick = { vm.runRaceCondition() },
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Race Condition")
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = { vm.runSynchronized() },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Synchronized")
             }
         }
 

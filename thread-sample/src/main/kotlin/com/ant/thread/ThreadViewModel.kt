@@ -91,4 +91,24 @@ class ThreadViewModel : ViewModel() {
         }.apply { name = "RaceCondition-Launcher" }.start()
     }
 
+    // Synchronized — lock으로 임계 구역 보호
+    fun runSynchronized() {
+        Thread {
+            log("=== [4] Synchronized ===")
+            var counter = 0
+            val lock = Any()
+            val threads = (1..3).map { i ->
+                val t = Thread {
+                    repeat(1000) { synchronized(lock) { counter++ } }
+                    log("Thread-$i 완료")
+                }
+                t.name = "Sync-$i"
+                t
+            }
+            threads.forEach { it.start() }
+            threads.forEach { it.join() }
+            log("최종 counter = $counter  (기댓값: 3000)")
+        }.apply { name = "Synchronized-Launcher" }.start()
+    }
+
 }
