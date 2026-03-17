@@ -60,14 +60,23 @@ fun ThreadScreen(
                 onClick = { vm.runBasicThread() },
                 modifier = Modifier.weight(1f)
             ) {
-                Text("기본 Thread 실행")
+                Text("기본 Thread")
             }
-            OutlinedButton(
-                onClick = { vm.clearLogs() },
+            Button(
+                onClick = { vm.runMultiThread() },
                 modifier = Modifier.weight(1f)
             ) {
-                Text("로그 초기화")
+                Text("멀티 Thread")
             }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        OutlinedButton(
+            onClick = { vm.clearLogs() },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("로그 초기화")
         }
 
         Spacer(Modifier.height(8.dp))
