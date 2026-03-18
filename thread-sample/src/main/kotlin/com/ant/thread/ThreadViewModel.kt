@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.update
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 
 class ThreadViewModel : ViewModel() {
@@ -21,6 +23,9 @@ class ThreadViewModel : ViewModel() {
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
 
     private val timeFmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
+
+    private var nonVolatileFlag = false
+    @Volatile private var volatileFlag = false
 
     private fun log(msg: String) {
         val t = Thread.currentThread()
@@ -110,5 +115,43 @@ class ThreadViewModel : ViewModel() {
             log("최종 counter = $counter  (기댓값: 3000)")
         }.apply { name = "Synchronized-Launcher" }.start()
     }
+
+    // Volatile — 스레드 간 플래그 최신값 보장
+    fun runVolatile() {
+        Thread {
+            log("=== [5] Volatile ===")
+
+            // volatile 없이 — 워커가 변경된 flag를 못 볼 수 있음
+            nonVolatileFlag = false
+            val worker = Thread {
+                var count = 0
+                while (!nonVolatileFlag) { count++ }
+                log("non-volatile 워커 종료, count=$count")
+            }
+            worker.name = "NonVolatileWorker"
+            worker.start()
+            Thread.sleep(50)
+            nonVolatileFlag = true
+            worker.join(1000)
+            if (worker.isAlive) {
+                log("non-volatile: 워커가 flag 변경을 못 봄 → 강제 종료")
+                worker.interrupt()
+            }
+
+            // @Volatile — 항상 최신값 참조 보장
+            volatileFlag = false
+            val volatileWorker = Thread {
+                var count = 0
+                while (!volatileFlag) { count++ }
+                log("volatile 워커 정상 종료, count=$count")
+            }
+            volatileWorker.name = "VolatileWorker"
+            volatileWorker.start()
+            Thread.sleep(50)
+            volatileFlag = true
+            volatileWorker.join()
+        }.apply { name = "Volatile-Launcher" }.start()
+    }
+
 
 }

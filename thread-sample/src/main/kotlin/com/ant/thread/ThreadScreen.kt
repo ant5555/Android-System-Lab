@@ -97,6 +97,13 @@ fun ThreadScreen(
             ) {
                 Text("Synchronized")
             }
+            Button(
+                onClick = { vm.runVolatile() },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Volatile")
+            }
+
         }
 
         Spacer(Modifier.height(4.dp))
