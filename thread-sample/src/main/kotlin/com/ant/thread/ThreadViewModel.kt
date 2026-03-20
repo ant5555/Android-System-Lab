@@ -9,8 +9,6 @@ import kotlinx.coroutines.flow.update
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 
 class ThreadViewModel : ViewModel() {
@@ -152,6 +150,5 @@ class ThreadViewModel : ViewModel() {
             volatileWorker.join()
         }.apply { name = "Volatile-Launcher" }.start()
     }
-
 
 }
