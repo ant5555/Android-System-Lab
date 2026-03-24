@@ -3,19 +3,20 @@ package com.ant.coroutine.basic
 import kotlinx.coroutines.*
 
 fun main() = runBlocking<Unit> {
-    val updateToken: Job = launch(Dispatchers.IO) {
-        println("[${Thread.currentThread().name}] 토큰 업데이트 시작")
-        delay(100L)
-        println("[${Thread.currentThread().name}] 토큰 업데이트 완료")
+    val convertImage1: Job = launch(Dispatchers.Default) {
+        Thread.sleep(1000)
+        println("[${Thread.currentThread().name}] 이미지1 변환 완료")
     }
 
-    val independentJob: Job = launch(Dispatchers.IO) {
-        println("[${Thread.currentThread().name}] 독립된 작업 시작")
+    val convertImage2: Job = launch(Dispatchers.Default) {
+        Thread.sleep(1000)
+        println("[${Thread.currentThread().name}] 이미지2 변환 완료")
     }
 
-    updateToken.join()
 
-    val networkCallJob: Job = launch(Dispatchers.IO) {
-        println("[${Thread.currentThread().name}] 네트워크 요청")
+    joinAll(convertImage1,convertImage2)
+
+    val uploadImage: Job = launch(Dispatchers.IO) {
+        println("[${Thread.currentThread().name}] 이미지1,2 업로드")
     }
 }
