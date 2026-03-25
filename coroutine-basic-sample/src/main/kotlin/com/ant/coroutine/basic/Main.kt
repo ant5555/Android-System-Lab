@@ -3,15 +3,13 @@ package com.ant.coroutine.basic
 import kotlinx.coroutines.*
 
 fun main() = runBlocking<Unit> {
-    val startTime = System.currentTimeMillis()
-    val longJob: Job = launch {
-        repeat(10) { repeatTime ->
-            delay(1000L)
-            println("[${getElapsedTime(startTime)}] 반복횟수 $repeatTime")
+    val whileJob: Job = launch(Dispatchers.Default) {
+        while(this.isActive) { //while(true) {
+            println("작업중 ")
+            //delay(1L) //1번 일시중단 성능저하
+            //yield()   //2번 스레드 사용 양보도 비효율적
         }
     }
-    delay(3500L)
-    longJob.cancel()
+    delay(100L)
+    whileJob.cancel()
 }
-
-fun getElapsedTime(startTime: Long): String = "지난 시간: ${System.currentTimeMillis() - startTime}ms"
