@@ -3,28 +3,20 @@ package com.ant.coroutine.basic
 import kotlinx.coroutines.*
 
 fun main() = runBlocking<Unit> {
-    // New → Active → Completed
-    val job = launch(start = CoroutineStart.LAZY) {
-        println("실행 중 - isActive: ${coroutineContext[Job]?.isActive}")
-        delay(300)
+    val startTime = System.currentTimeMillis()
+    val participantDeferred1: Deferred<Array<String>> = async(Dispatchers.IO) {
+        delay(1000L)
+        arrayOf("Yun", "Kim")
     }
-    println("생성 직후  - isNew: ${!job.isActive && !job.isCompleted && !job.isCancelled}")
-    job.start()
-    println("start 후   - isActive: ${job.isActive}")
-    job.join()
-    println("join 후    - isCompleted: ${job.isCompleted}")
 
-    println()
-
-    // Active → Cancelling → Cancelled
-    val job2 = launch(Dispatchers.Default) {
-        while (isActive) {
-            println("job2 실행 중")
-        }
+    val participantDeferred2: Deferred<Array<String>> = async(Dispatchers.IO) {
+        delay(1000L)
+        arrayOf("Park")
     }
-    delay(100)
-    println("cancel 전  - isActive: ${job2.isActive}")
-    job2.cancel()
-    job2.join()
-    println("cancel 후  - isCancelled: ${job2.isCancelled}, isCompleted: ${job2.isCompleted}")
+
+    val results: List<Array<String>> = listOf(participantDeferred1,participantDeferred2).awaitAll()
+    println("[${getElapsedTime(startTime)}] 참여자 목록: ${listOf(*results[0], *results[1])}")
+
 }
+
+fun getElapsedTime(startTime: Long): String = "지난 시간: ${System.currentTimeMillis() - startTime}ms"
