@@ -4,34 +4,73 @@ import kotlinx.coroutines.*
 
 fun main() = runBlocking<Unit> {
 
-    // 1. 여러 구성요소 합치기 (+)
-    val context = Dispatchers.IO + CoroutineName("MyCoroutine") + Job()
-    launch(context) {
-        println("합친 컨텍스트 - 스레드: ${Thread.currentThread().name}")
-        println("합친 컨텍스트 - 이름: ${coroutineContext[CoroutineName]}")
-    }.join()
+    // 1. 부모-자식 구조 확인
+    println("=== 부모-자식 구조 ===")
+    val parent = launch(CoroutineName("Parent")) {
+        val child1 = launch(CoroutineName("Child1")) {
+            delay(1000L)
+            println("[${coroutineContext[CoroutineName]}] 완료")
+        }
+        val child2 = launch(CoroutineName("Child2")) {
+            delay(500L)
+            println("[${coroutineContext[CoroutineName]}] 완료")
+        }
+        println("[${coroutineContext[CoroutineName]}] 스레드: ${Thread.currentThread().name}")
+        println("[${coroutineContext[CoroutineName]}] child1 job: ${child1[Job]}")
+        println("[${coroutineContext[CoroutineName]}] child2 job: ${child2[Job]}")
+    }
+    parent.join()
 
-    // 2. 키로 구성요소 꺼내기
-    launch(Dispatchers.Default + CoroutineName("KeyTest")) {
-        val name = coroutineContext[CoroutineName]   // 키로 꺼냄
-        val job  = coroutineContext[Job]             // 키로 꺼냄
-        println("이름: $name, job 활성: ${job?.isActive}")
-    }.join()
+    // 2. 부모 취소 → 자식도 취소
+    println("\n=== 부모 취소 시 자식 취소 ===")
+    val parentJob = launch(CoroutineName("Parent")) {
+        launch(CoroutineName("Child1")) {
+            delay(1000L)
+            println("[Child1] 완료") // 찍히면 안됨
+        }
+        launch(CoroutineName("Child2")) {
+            delay(1000L)
+            println("[Child2] 완료") // 찍히면 안됨
+        }
+        println("[Parent] 자식 2개 생성")
+    }
+    delay(100L)
+    parentJob.cancel()
+    parentJob.join()
+    println("[Parent] 취소됨 - isCancelled: ${parentJob.isCancelled}")
 
-    // 3. 구성요소 제거하기 (minusKey)
-    val fullContext = Dispatchers.IO + CoroutineName("RemoveTest")
-    val removedContext = fullContext.minusKey(CoroutineName)  // 이름 제거
-    launch(removedContext) {
-        println("이름 제거 후: ${coroutineContext[CoroutineName]}")  // null
-        println("Dispatcher는 유지: ${Thread.currentThread().name}")
-    }.join()
+    // 3. 자식 취소 → 부모는 유지
+    println("\n=== 자식 취소 시 부모 유지 ===")
+    val parentJob2 = launch(CoroutineName("Parent")) {
+        val child1 = launch(CoroutineName("Child1")) {
+            delay(1000L)
+            println("[Child1] 완료") // 찍히면 안됨
+        }
+        val child2 = launch(CoroutineName("Child2")) {
+            delay(500L)
+            println("[Child2] 완료")
+        }
+        child1.cancel()
+        println("[Parent] Child1만 취소 - isCancelled: ${child1.isCancelled}")
+        child2.join()
+        println("[Parent] 완료")
+    }
+    parentJob2.join()
 
-    // 4. 자식 코루틴은 부모 컨텍스트 상속
-    launch(CoroutineName("Parent")) {
-        println("부모 이름: ${coroutineContext[CoroutineName]}")
-        launch {
-            // Dispatcher, Job은 새로 생성되지만 CoroutineName은 상속
-            println("자식 이름: ${coroutineContext[CoroutineName]}")
-        }.join()
+    // 4. coroutineScope vs 새 Job — 스코프 차이
+    println("\n=== coroutineScope 스코프 ===")
+    launch(CoroutineName("Outer")) {
+        coroutineScope {
+            launch(CoroutineName("Inner1")) {
+                delay(300L)
+                println("[Inner1] 완료 - 스레드: ${Thread.currentThread().name}")
+            }
+            launch(CoroutineName("Inner2")) {
+                delay(100L)
+                println("[Inner2] 완료 - 스레드: ${Thread.currentThread().name}")
+            }
+            println("[Outer] coroutineScope 안 — Inner 다 끝날때까지 대기")
+        }
+        println("[Outer] coroutineScope 끝난 후 여기 실행")
     }.join()
 }
