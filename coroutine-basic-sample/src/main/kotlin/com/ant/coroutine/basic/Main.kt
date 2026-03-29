@@ -4,73 +4,87 @@ import kotlinx.coroutines.*
 
 fun main() = runBlocking<Unit> {
 
-    // 1. 부모-자식 구조 확인
-    println("=== 부모-자식 구조 ===")
-    val parent = launch(CoroutineName("Parent")) {
-        val child1 = launch(CoroutineName("Child1")) {
-            delay(1000L)
-            println("[${coroutineContext[CoroutineName]}] 완료")
+    // ==========
+
+    // 1. 자식 예외 → 부모까지 취소
+    println("=== [1] 자식 예외 → 부모 취소 ===")
+    val parent = launch {
+        launch {
+            delay(100L)
+            throw RuntimeException("Child 예외 발생")
         }
-        val child2 = launch(CoroutineName("Child2")) {
+        launch {
             delay(500L)
-            println("[${coroutineContext[CoroutineName]}] 완료")
+            println("다른 자식 완료") // 찍히면 안됨
         }
-        println("[${coroutineContext[CoroutineName]}] 스레드: ${Thread.currentThread().name}")
-        println("[${coroutineContext[CoroutineName]}] child1 job: ${child1[Job]}")
-        println("[${coroutineContext[CoroutineName]}] child2 job: ${child2[Job]}")
     }
     parent.join()
+    println("parent isCancelled: ${parent.isCancelled}")
 
-    // 2. 부모 취소 → 자식도 취소
-    println("\n=== 부모 취소 시 자식 취소 ===")
-    val parentJob = launch(CoroutineName("Parent")) {
-        launch(CoroutineName("Child1")) {
-            delay(1000L)
-            println("[Child1] 완료") // 찍히면 안됨
-        }
-        launch(CoroutineName("Child2")) {
-            delay(1000L)
-            println("[Child2] 완료") // 찍히면 안됨
-        }
-        println("[Parent] 자식 2개 생성")
+    // 2. CoroutineExceptionHandler — 예외 잡기
+    println("\n=== [2] CoroutineExceptionHandler ===")
+    val handler = CoroutineExceptionHandler { _, e ->
+        println("Handler 캐치: ${e.message}")
     }
-    delay(100L)
-    parentJob.cancel()
-    parentJob.join()
-    println("[Parent] 취소됨 - isCancelled: ${parentJob.isCancelled}")
-
-    // 3. 자식 취소 → 부모는 유지
-    println("\n=== 자식 취소 시 부모 유지 ===")
-    val parentJob2 = launch(CoroutineName("Parent")) {
-        val child1 = launch(CoroutineName("Child1")) {
-            delay(1000L)
-            println("[Child1] 완료") // 찍히면 안됨
+    val job = launch(handler) {
+        launch {
+            delay(100L)
+            throw IllegalStateException("예외!")
         }
-        val child2 = launch(CoroutineName("Child2")) {
-            delay(500L)
-            println("[Child2] 완료")
-        }
-        child1.cancel()
-        println("[Parent] Child1만 취소 - isCancelled: ${child1.isCancelled}")
-        child2.join()
-        println("[Parent] 완료")
+        delay(500L)
+        println("완료") // 찍히면 안됨
     }
-    parentJob2.join()
+    job.join()
 
-    // 4. coroutineScope vs 새 Job — 스코프 차이
-    println("\n=== coroutineScope 스코프 ===")
-    launch(CoroutineName("Outer")) {
-        coroutineScope {
-            launch(CoroutineName("Inner1")) {
-                delay(300L)
-                println("[Inner1] 완료 - 스레드: ${Thread.currentThread().name}")
-            }
-            launch(CoroutineName("Inner2")) {
+    // 3. SupervisorJob — 자식 예외가 다른 자식에 영향 없음
+    println("\n=== [3] SupervisorJob ===")
+    val supervisor = CoroutineScope(SupervisorJob() + handler)
+    val child1 = supervisor.launch {
+        delay(100L)
+        throw RuntimeException("Child1 예외")
+    }
+    val child2 = supervisor.launch {
+        delay(500L)
+        println("Child2 완료") // SupervisorJob이라 찍혀야 함
+    }
+    joinAll(child1, child2)
+
+    // ==========
+
+    // 4. async 예외 — await() 호출 시점에 터짐
+    println("\n=== [4] async 예외 전파 ===")
+    val handler2 = CoroutineExceptionHandler { _, e ->
+        println("Handler 캐치: ${e.message}")
+    }
+    launch(handler2) {
+        val deferred = async {
+            delay(100L)
+            throw RuntimeException("async 예외")
+            "결과"
+        }
+        try {
+            deferred.await() // 여기서 예외 터짐
+        } catch (e: Exception) {
+            println("await catch: ${e.message}")
+        }
+    }.join()
+
+    // 5. supervisorScope — 자식 예외 격리 + 개별 처리
+    println("\n=== [5] supervisorScope ===")
+    launch {
+        supervisorScope {
+            val a = async {
                 delay(100L)
-                println("[Inner2] 완료 - 스레드: ${Thread.currentThread().name}")
+                throw RuntimeException("a 예외")
+                "a 결과"
             }
-            println("[Outer] coroutineScope 안 — Inner 다 끝날때까지 대기")
+            val b = async {
+                delay(200L)
+                "b 결과"
+            }
+            // a 예외를 개별로 처리, b는 정상
+            println("a: ${runCatching { a.await() }.exceptionOrNull()?.message}")
+            println("b: ${b.await()}")
         }
-        println("[Outer] coroutineScope 끝난 후 여기 실행")
     }.join()
 }
