@@ -4,87 +4,98 @@ import kotlinx.coroutines.*
 
 fun main() = runBlocking<Unit> {
 
-    // ==========
+    // ==========  CancellationException  ==========
 
-    // 1. 자식 예외 → 부모까지 취소
-    println("=== [1] 자식 예외 → 부모 취소 ===")
-    val parent = launch {
-        launch {
-            delay(100L)
-            throw RuntimeException("Child 예외 발생")
-        }
-        launch {
-            delay(500L)
-            println("다른 자식 완료") // 찍히면 안됨
-        }
-    }
-    parent.join()
-    println("parent isCancelled: ${parent.isCancelled}")
-
-    // 2. CoroutineExceptionHandler — 예외 잡기
-    println("\n=== [2] CoroutineExceptionHandler ===")
+    // 1. CancellationException은 예외가 아니라 취소 신호 — 부모로 전파 안됨
+    println("=== [1] CancellationException 전파 안됨 ===")
     val handler = CoroutineExceptionHandler { _, e ->
-        println("Handler 캐치: ${e.message}")
+        println("Handler 캐치: ${e.message}") // 찍히면 안됨
     }
-    val job = launch(handler) {
-        launch {
-            delay(100L)
-            throw IllegalStateException("예외!")
-        }
-        delay(500L)
-        println("완료") // 찍히면 안됨
-    }
-    job.join()
+    launch(handler) {
+        throw CancellationException("취소 신호")
+    }.join()
+    println("CancellationException은 핸들러 안 탐")
 
-    // 3. SupervisorJob — 자식 예외가 다른 자식에 영향 없음
-    println("\n=== [3] SupervisorJob ===")
-    val supervisor = CoroutineScope(SupervisorJob() + handler)
-    val child1 = supervisor.launch {
-        delay(100L)
-        throw RuntimeException("Child1 예외")
-    }
-    val child2 = supervisor.launch {
-        delay(500L)
-        println("Child2 완료") // SupervisorJob이라 찍혀야 함
-    }
-    joinAll(child1, child2)
-
-    // ==========
-
-    // 4. async 예외 — await() 호출 시점에 터짐
-    println("\n=== [4] async 예외 전파 ===")
-    val handler2 = CoroutineExceptionHandler { _, e ->
-        println("Handler 캐치: ${e.message}")
-    }
-    launch(handler2) {
-        val deferred = async {
-            delay(100L)
-            throw RuntimeException("async 예외")
-            "결과"
-        }
+    // 2. catch(Exception)으로 CancellationException 삼키면 취소가 무시
+    println("\n=== [2] CancellationException 삼키기 — 위험 ===")
+    val job = launch {
         try {
-            deferred.await() // 여기서 예외 터짐
-        } catch (e: Exception) {
-            println("await catch: ${e.message}")
+            delay(1000L)
+        } catch (e: Exception) { // CancellationException도 잡힘
+            println("잡힘: ${e::class.simpleName}")
+            // 취소 신호를 삼켜버림 — 코루틴이 계속 살아있으려 함
+            delay(500L) // 여기서 다시 CancellationException 발생
+            println("여기 찍히면 안됨")
         }
-    }.join()
+    }
+    delay(100L)
+    job.cancel()
+    job.join()
+    println("job isCancelled: ${job.isCancelled}")
 
-    // 5. supervisorScope — 자식 예외 격리 + 개별 처리
-    println("\n=== [5] supervisorScope ===")
-    launch {
-        supervisorScope {
-            val a = async {
-                delay(100L)
-                throw RuntimeException("a 예외")
-                "a 결과"
-            }
-            val b = async {
-                delay(200L)
-                "b 결과"
-            }
-            // a 예외를 개별로 처리, b는 정상
-            println("a: ${runCatching { a.await() }.exceptionOrNull()?.message}")
-            println("b: ${b.await()}")
+    // 3. CancellationException은 반드시 다시 던져야 함
+    println("\n=== [3] CancellationException 다시 던지기 — 올바른 패턴 ===")
+    val job2 = launch {
+        try {
+            delay(1000L)
+        } catch (e: CancellationException) {
+            println("취소 감지 — 정리 작업 후 rethrow")
+            throw e // 반드시 다시 던짐
+        } catch (e: Exception) {
+            println("일반 예외만 처리: ${e.message}")
         }
-    }.join()
+    }
+    delay(100L)
+    job2.cancel()
+    job2.join()
+    println("job2 isCancelled: ${job2.isCancelled}")
+
+    // ==========  try-finally + NonCancellable  ==========
+
+    // 4. finally — 취소돼도 실행 보장
+    println("\n=== [4] finally 취소 시 실행 ===")
+    val job3 = launch {
+        try {
+            println("작업 시작")
+            delay(1000L)
+            println("작업 완료") // 찍히면 안됨
+        } finally {
+            println("finally 실행 — 리소스 정리") // 취소돼도 찍혀야 함
+        }
+    }
+    delay(100L)
+    job3.cancel()
+    job3.join()
+
+    // 5. finally 안에서 suspend 함수 호출 — 취소 상태라 바로 CancellationException
+    println("\n=== [5] finally 안 suspend 함수 — 실행 안됨 ===")
+    val job4 = launch {
+        try {
+            delay(1000L)
+        } finally {
+            println("finally 진입")
+            delay(100L) // 취소 상태라 즉시 CancellationException 발생
+            println("여기 찍히면 안됨")
+        }
+    }
+    delay(100L)
+    job4.cancel()
+    job4.join()
+
+    // 6. NonCancellable — finally 안에서 suspend 함수 보장
+    println("\n=== [6] NonCancellable — finally suspend 보장 ===")
+    val job5 = launch {
+        try {
+            delay(1000L)
+        } finally {
+            withContext(NonCancellable) { // 취소 무시
+                println("NonCancellable 진입")
+                delay(300L)              // 취소 상태여도 실행됨
+                println("DB 닫기 / 로그 전송 등 중요 작업 완료")
+            }
+        }
+    }
+    delay(100L)
+    job5.cancel()
+    job5.join()
 }
